@@ -4,7 +4,7 @@ Expected input filenames (any that exist will be processed):
   ahrf{YEAR}.csv  (e.g., ahrf2024.csv)
 
 Output:
-  cleaned/ahrf_{YEAR}_trim.csv – trimmed with county_fips + preserves all columns
+  cleaned/ahrf_{YEAR}_trim.csv - trimmed with county_fips + preserves all columns
 Notes:
  - AHRF schema varies. This script keeps all columns but ensures a county_fips column.
  - If both 'FIPS' and 'F00002' exist, prefers the 5-digit code.
@@ -44,7 +44,14 @@ def ensure_fips(df):
     return df
 
 def main():
-    files = glob.glob("ahrf*.csv")
+    hr_dir = Path("health_resources")
+    if not hr_dir.exists():
+        print("[AHRF] Directory 'health_resources' not found.")
+        files = []
+    else:
+        # match files named either "ahrf_{year}.csv" or "ahrf{year}.csv"
+        patterns = ("ahrf_*.csv", "ahrf*.csv")
+        files = sorted({str(p) for pat in patterns for p in hr_dir.glob(pat)})
     if not files:
         print("[AHRF] No ahrf*.csv files found.")
         return
@@ -63,4 +70,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-PY

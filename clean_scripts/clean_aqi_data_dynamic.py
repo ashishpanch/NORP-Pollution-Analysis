@@ -2,13 +2,13 @@ import pandas as pd
 import sys
 import os
 
-def clean_aqi_data(year):
+def clean_aqi_data(year, output_dir):
     """Clean annual AQI by county data for the given year."""
-    input_file = f"annual_aqi_by_county_{year}.csv"
-    output_file = f"cleaned_aqi_{year}.csv"
+    input_file = os.path.join("aqi_by_county", f"annual_aqi_by_county_{year}.csv")
+    output_file = os.path.join(output_dir, f"cleaned_aqi_{year}.csv")
 
     if not os.path.exists(input_file):
-        print(f"File not found: {input_file}")
+        print(f"[!] File not found for {year}: {input_file}")
         return
 
     # Load raw dataset
@@ -36,20 +36,27 @@ def clean_aqi_data(year):
     )
 
     # Clean up names
-    aqi_clean["County"] = aqi_clean["County"].str.replace(" County", "", regex=False).str.strip()
+    aqi_clean["County"] = aqi_clean["County"].str.replace(" County", "", regex=False).str.strip().str.title()
     aqi_clean["State"] = aqi_clean["State"].str.title()
-    aqi_clean["County"] = aqi_clean["County"].str.title()
 
     # Save cleaned dataset
     aqi_clean.to_csv(output_file, index=False)
 
-    print(f"Cleaned AQI dataset saved as {output_file}")
-    print(aqi_clean.head())
+    print(f"[✓] Cleaned AQI dataset saved: {output_file}")
+
 
 if __name__ == "__main__":
-    # Allow year to be passed as argument: python clean_aqi_data.py 2018
-    if len(sys.argv) < 2:
-        print("Usage: python clean_aqi_data.py <year>")
-    else:
+    # Create output folder if it doesn’t exist
+    output_dir = "cleaned_aqi_data"
+    os.makedirs(output_dir, exist_ok=True)
+
+    if len(sys.argv) == 2:
+        # Run for a specific year
         year = sys.argv[1]
-        clean_aqi_data(year)
+        clean_aqi_data(year, output_dir)
+    else:
+        # Run for all years 2015–2025
+        for year in range(2015, 2026):
+            clean_aqi_data(year, output_dir)
+
+        print("\nAll years processed and saved in 'cleaned_aqi_data/'")

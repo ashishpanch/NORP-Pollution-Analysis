@@ -1,11 +1,11 @@
 """
-Clean and combine IRS SOI county-to-county migration inflow/outflow (2016–2025 if available).
+Clean and combine IRS SOI county-to-county migration inflow/outflow (2016-2025 if available).
 Expected filenames (any subset will be processed):
-  countyinflowYYZZ.csv and countyoutflowYYZZ.csv  (e.g., countyinflow2122.csv for 2021–2022)
+  countyinflowYYZZ.csv and countyoutflowYYZZ.csv  (e.g., countyinflow2122.csv for 2021-2022)
 
 Output:
-  cleaned/irs_migration_long.csv – long form by county, year_start, type (inflow/outflow)
-  cleaned/irs_migration_wide.csv – wide per county-year with inflow/outflow + net
+  cleaned/irs_migration_long.csv - long form by county, year_start, type (inflow/outflow)
+  cleaned/irs_migration_wide.csv - wide per county-year with inflow/outflow + net
 Notes:
  - Normalizes county FIPS (origin/destination as appropriate).
  - Computes net_migr = inflow_returns - outflow_returns (and AGI if available).
@@ -109,4 +109,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-PY

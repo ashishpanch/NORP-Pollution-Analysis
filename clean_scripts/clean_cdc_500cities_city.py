@@ -1,10 +1,10 @@
 """
-Clean CDC 500 Cities city-level (2016–2019) if present.
+Clean CDC 500 Cities city-level (2016-2019) if present.
 Expected input filenames (any that exist will be processed):
   500_Cities__City-level_Data_(GIS_Friendly_Format),_{YEAR}_release_*.csv
 
 Output:
-  cleaned/500cities_city_{YEAR}.csv – trimmed city-level indicators
+  cleaned/500cities_city_{YEAR}.csv - trimmed city-level indicators
 Notes:
  - Keeps essential columns and renames to a consistent schema.
  - Does NOT pivot by measure; leaves long form (one row per place+measure).
@@ -64,4 +64,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-PY
