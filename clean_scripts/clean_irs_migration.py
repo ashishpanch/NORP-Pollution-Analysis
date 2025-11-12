@@ -1,251 +1,132 @@
-#!/usr/bin/env python3
-"""
-Clean IRS county migration (inflow/outflow) CSVs.
-
-Folder layout this script expects (relative to repo root):
-  NORP/
-    clean_scripts/
-      clean_irs_migration.py  <-- this file
-    migration/
-      inflow/
-        countyinflow1516.csv
-        countyinflow1617.csv
-        countyinflow1718.csv
-        countyinflow1819.csv
-        countyinflow1920.csv
-        countyinflow2020_2021.csv
-        countyinflow2122.csv
-      outflow/
-        countyoutflow1516.csv
-        countyoutflow1617.csv
-        countyoutflow1718.csv
-        countyoutflow1819.csv
-        countyoutflow1920.csv
-        countyoutflow2021.csv
-        countyoutflow2122.csv
-    cleaned_migration_data/   <-- outputs (created if missing)
-"""
-
-from __future__ import annotations
-import re
-from pathlib import Path
-from typing import Optional, Tuple, List
+import pandas as pd
 import sys
+import os
+import glob
 
-try:
-    import pandas as pd
-except ImportError:
-    print("pandas is required. Try: pip install pandas", file=sys.stderr)
-    raise
-
-
-# ---------- repo + path discovery ----------
-
-def find_repo_root() -> Path:
+def clean_and_merge_migration_data(year_suffix):
     """
-    Find the directory that contains both 'migration' and 'clean_scripts'.
-    Prefer walking up from this file; fall back to CWD if needed.
+    Cleans and merges county inflow and outflow data for a given year range.
+    Keeps only rows with 'Total Migration-US and Foreign' in the county name.
     """
-    here = Path(__file__).resolve()
-    for p in [here] + list(here.parents):
-        if (p / "migration").is_dir() and (p / "clean_scripts").is_dir():
-            return p
-    # Last resort: CWD during execution
-    cwd = Path.cwd()
-    if (cwd / "migration").is_dir() and (cwd / "clean_scripts").is_dir():
-        return cwd
-    raise RuntimeError(
-        "Could not locate repo root containing both 'migration' and 'clean_scripts'. "
-        "Run from the repo or keep this script in clean_scripts/."
+
+    inflow_file = os.path.join("migration", "inflow", f"countyinflow{year_suffix}.csv")
+    outflow_file = os.path.join("migration", "outflow", f"countyoutflow{year_suffix}.csv")
+
+    if not os.path.exists(inflow_file) or not os.path.exists(outflow_file):
+        print(f"⚠️ Missing file(s) for {year_suffix}, skipping.")
+        return None
+
+    print(f"\n📥 Loading inflow data: {inflow_file}")
+    print(f"📤 Loading outflow data: {outflow_file}")
+
+    inflow = pd.read_csv(inflow_file, encoding="latin1")
+    outflow = pd.read_csv(outflow_file, encoding="latin1")
+
+    # ---- Validate columns ----
+    print(f"Inflow columns: {list(inflow.columns)}")
+    print(f"Outflow columns: {list(outflow.columns)}")
+
+    # -----------------------------
+    # Select and rename inflow columns
+    # -----------------------------
+    inflow = inflow.rename(columns={
+        "y2_statefips": "statefips",
+        "y2_countyfips": "countyfips",
+        "y1_state": "state",
+        "y1_countyname": "countyname",
+        "n1": "n1_inflow",
+        "n2": "n2_inflow",
+        "agi": "agi_inflow"
+    })
+
+    outflow = outflow.rename(columns={
+        "y1_statefips": "statefips",
+        "y1_countyfips": "countyfips",
+        "y2_state": "state",
+        "y2_countyname": "countyname",
+        "n1": "n1_outflow",
+        "n2": "n2_outflow",
+        "agi": "agi_outflow"
+    })
+
+    # -----------------------------
+    # Keep only rows with "Total Migration-US and Foreign"
+    # -----------------------------
+    inflow = inflow[inflow["countyname"].str.contains("Total Migration-US and Foreign", case=False, na=False)]
+    outflow = outflow[outflow["countyname"].str.contains("Total Migration-US and Foreign", case=False, na=False)]
+
+    # -----------------------------
+    # Merge inflow and outflow data
+    # -----------------------------
+    merged = pd.merge(
+        inflow,
+        outflow,
+        on=["state", "countyname", "statefips", "countyfips"],
+        how="inner"
     )
 
+    # Compute net migration (inflow - outflow)
+    merged["net_migration"] = merged["n1_inflow"] - merged["n1_outflow"]
 
-ROOT = find_repo_root()
-INFLOW_DIR  = ROOT / "migration" / "inflow"
-OUTFLOW_DIR = ROOT / "migration" / "outflow"
-OUTDIR      = ROOT / "cleaned_migration_data"
-OUTDIR.mkdir(parents=True, exist_ok=True)
+    # Add FIPS (state + county)
+    merged["fips"] = (
+        merged["statefips"].astype(str).str.zfill(2)
+        + merged["countyfips"].astype(str).str.zfill(3)
+    )
 
+    cleaned = merged[[
+        "fips",
+        "state",
+        "countyname",
+        "n1_inflow",
+        "n1_outflow",
+        "net_migration",
+        "agi_inflow",
+        "agi_outflow"
+    ]]
 
-# ---------- filename → period parsing ----------
+    os.makedirs("cleaned_migration_data", exist_ok=True)
+    output_file = os.path.join("cleaned_migration_data", f"cleaned_migration_{year_suffix}.csv")
+    cleaned.to_csv(output_file, index=False)
 
-YEAR_PATTERNS = [
-    re.compile(r"(?P<y1>\d{4})_(?P<y2>\d{4})"),  # e.g., 2020_2021
-    re.compile(r"(?P<yy1>\d{2})(?P<yy2>\d{2})"), # e.g., 1516
-    re.compile(r"(?P<y>\d{4})"),                 # e.g., 2021 (assume 2020-2021 season)
-]
+    print(f"✅ Cleaned and merged file saved to: {output_file}")
+    print(f"📊 Total counties processed: {len(cleaned)}")
 
-def parse_period_from_name(name: str) -> Tuple[Optional[int], Optional[int]]:
-    """
-    Returns (period_start, period_end) as full years, or (None, None) if not found.
-
-    Rules:
-      - '2020_2021'  -> (2020, 2021)
-      - '1516'       -> (2015, 2016)
-      - '2021'       -> assume (2020, 2021)
-    """
-    base = Path(name).stem
-
-    # 1) 2020_2021
-    m = YEAR_PATTERNS[0].search(base)
-    if m:
-        y1, y2 = int(m.group("y1")), int(m.group("y2"))
-        return (y1, y2)
-
-    # 2) 1516
-    m = YEAR_PATTERNS[1].search(base)
-    if m:
-        yy1, yy2 = int(m.group("yy1")), int(m.group("yy2"))
-        # fix century: assume 2000s
-        y1 = 2000 + yy1
-        y2 = 2000 + yy2
-        return (y1, y2)
-
-    # 3) 2021  -> assume (2020, 2021)
-    m = YEAR_PATTERNS[2].search(base)
-    if m:
-        y = int(m.group("y"))
-        return (y - 1, y)
-
-    return (None, None)
+    return cleaned
 
 
-# ---------- IO helpers ----------
+def clean_all_years():
+    """Automatically finds and processes all inflow/outflow file pairs."""
+    inflow_files = glob.glob(os.path.join("migration", "inflow", "countyinflow*.csv"))
+    outflow_files = glob.glob(os.path.join("migration", "outflow", "countyoutflow*.csv"))
 
-def list_files(folder: Path, pattern: str) -> List[Path]:
-    files = sorted(folder.glob(pattern))
-    print(f"[scan] {folder} -> {len(files)} file(s) matched '{pattern}'")
-    return files
+    inflow_years = {os.path.basename(f).replace("countyinflow", "").replace(".csv", "") for f in inflow_files}
+    outflow_years = {os.path.basename(f).replace("countyoutflow", "").replace(".csv", "") for f in outflow_files}
 
-def safe_read_csv(path: Path) -> pd.DataFrame:
-    """
-    Read CSV while surviving non-UTF8 encodings and messy rows.
-    Tries utf-8, utf-8-sig, cp1252, latin-1.
-    """
-    enc_try = ("utf-8", "utf-8-sig", "cp1252", "latin-1")
-    last_err = None
-    for enc in enc_try:
-        try:
-            df = pd.read_csv(
-                path,
-                dtype=str,
-                encoding=enc,
-                engine="python",        # allows non-UTF8
-                on_bad_lines="warn"     # or "skip"
-            )
-            df.columns = [re.sub(r"\s+", " ", c.strip()) for c in df.columns]
-            print(f"[read] {path.name} (encoding={enc})")
-            return df
-        except UnicodeDecodeError as e:
-            last_err = e
-            continue
-        except Exception as e:
-            last_err = e
-            continue
-    raise RuntimeError(f"Failed reading {path} with tried encodings {enc_try}: {last_err}")
-    """
-    Read CSV while surviving non-UTF8 encodings and slightly messy rows.
-    Tries several common encodings used in IRS/Excel exports.
-    """
-    enc_try = ("utf-8", "utf-8-sig", "cp1252", "latin-1")
-    last_err = None
-    for enc in enc_try:
-        try:
-            df = pd.read_csv(
-                path,
-                dtype=str,
-                low_memory=False,
-                encoding=enc,
-                engine="python",       # more forgiving
-                on_bad_lines="warn"    # or "skip" if you want to drop offenders
-            )
-            # normalize column names
-            df.columns = [re.sub(r"\s+", " ", c.strip()) for c in df.columns]
-            print(f"[read] {path.name} (encoding={enc})")
-            return df
-        except UnicodeDecodeError as e:
-            last_err = e
-            continue
-        except Exception as e:
-            # other parser errors—remember and try next encoding
-            last_err = e
-            continue
-    raise RuntimeError(f"Failed reading {path} with tried encodings {enc_try}: {last_err}")
+    valid_years = sorted(inflow_years.intersection(outflow_years))
+    if not valid_years:
+        print("⚠️ No matching inflow/outflow file pairs found.")
+        return
+
+    print(f"\n📆 Found {len(valid_years)} matching year pairs: {', '.join(valid_years)}")
+    for year_suffix in valid_years:
+        clean_and_merge_migration_data(year_suffix)
 
 
-def write_csv(df: pd.DataFrame, path: Path):
-    # Keep index off; don't change dtypes here.
-    df.to_csv(path, index=False)
-    print(f"[write] {path} ({len(df):,} rows, {len(df.columns)} cols)")
-
-
-# ---------- cleaning logic ----------
-
-def annotate(df: pd.DataFrame, *, flow: str, src: Path) -> pd.DataFrame:
-    start, end = parse_period_from_name(src.name)
-    df = df.copy()
-    df.insert(0, "flow", flow)
-    df.insert(1, "period_start", start)
-    df.insert(2, "period_end", end)
-    df.insert(3, "source_file", src.name)
-    return df
-
-def process_folder(folder: Path, *, flow: str, pattern: str, outdir: Path) -> pd.DataFrame:
-    files = list_files(folder, pattern)
-    if not files:
-        print(f"[warn] No files found in {folder} with pattern {pattern}")
-    parts: List[pd.DataFrame] = []
-    for f in files:
-        print(f"[read] {f.name}")
-        df = safe_read_csv(f)
-        df = annotate(df, flow=flow, src=f)
-        # per-file cleaned output
-        ps, pe = df["period_start"].iat[0], df["period_end"].iat[0]
-        suffix = f"{ps}_{pe}" if pd.notna(ps) and pd.notna(pe) else "unknown_period"
-        out_file = outdir / f"clean_{flow}_{suffix}.csv"
-        write_csv(df, out_file)
-        parts.append(df)
-
-    if parts:
-        combined = pd.concat(parts, ignore_index=True, sort=False)
-    else:
-        combined = pd.DataFrame()
-    return combined
-
-
-def main():
-    print("========== IRS County Migration Cleaning ==========")
-    print(f"[paths] ROOT:        {ROOT}")
-    print(f"[paths] INFLOW_DIR:  {INFLOW_DIR}")
-    print(f"[paths] OUTFLOW_DIR: {OUTFLOW_DIR}")
-    print(f"[paths] OUTDIR:      {OUTDIR}")
-
-    if not INFLOW_DIR.exists():
-        print(f"[error] Missing folder: {INFLOW_DIR}")
-    if not OUTFLOW_DIR.exists():
-        print(f"[error] Missing folder: {OUTFLOW_DIR}")
-
-    inflow_all  = process_folder(INFLOW_DIR,  flow="inflow",  pattern="countyinflow*.csv",  outdir=OUTDIR)
-    outflow_all = process_folder(OUTFLOW_DIR, flow="outflow", pattern="countyoutflow*.csv", outdir=OUTDIR)
-
-    if not inflow_all.empty:
-        write_csv(inflow_all, OUTDIR / "inflow_all.csv")
-    else:
-        print("[warn] No inflow rows to combine.")
-
-    if not outflow_all.empty:
-        write_csv(outflow_all, OUTDIR / "outflow_all.csv")
-    else:
-        print("[warn] No outflow rows to combine.")
-
-    if not inflow_all.empty or not outflow_all.empty:
-        both = pd.concat([df for df in (inflow_all, outflow_all) if not df.empty],
-                         ignore_index=True, sort=False)
-        write_csv(both, OUTDIR / "migration_all.csv")
-    else:
-        print("[warn] Nothing processed; migration_all.csv not written.")
-
-    print("=============== DONE =================")
-
+# -----------------------------
+# Script entry point
+# -----------------------------
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) == 2:
+        arg = sys.argv[1]
+        if arg.lower() == "all":
+            clean_all_years()
+        else:
+            clean_and_merge_migration_data(arg)
+    else:
+        print("Usage:")
+        print("  python clean_migration_data.py <year_suffix>")
+        print("  python clean_migration_data.py all")
+        print("\nExamples:")
+        print("  python clean_migration_data.py 1516")
+        print("  python clean_migration_data.py all")
