@@ -36,8 +36,14 @@ OUTPUT_COL_ORDER = [
     "pop_total", "pop_18plus",
     "asthma_prev", "copd_prev", "chd_prev", "stroke_prev",
     "smoking_prev", "diabetes_prev", "inactivity_prev",
-    "phlth_prev", "mhlth_prev",  # optional; included only if present
+    "phlth_prev", "mhlth_prev",
     "year",
+]
+
+# Health measures for simple completeness check
+MEASURE_COLS = [
+    "asthma_prev","copd_prev","chd_prev","stroke_prev",
+    "smoking_prev","diabetes_prev","inactivity_prev","phlth_prev","mhlth_prev"
 ]
 
 def read_csv_flexible(path):
@@ -45,6 +51,13 @@ def read_csv_flexible(path):
         return pd.read_csv(path, low_memory=False)
     except UnicodeDecodeError:
         return pd.read_csv(path, low_memory=False, encoding="latin-1")
+
+def clean_numeric_series(s):
+    # handle "123,456" and spaces before converting to number
+    return pd.to_numeric(
+        s.astype(str).str.replace(r"[,\s]", "", regex=True).replace({"": None}),
+        errors="coerce"
+    )
 
 def find_files(year):
     pattern = f"../health_outcomes/PLACES__County_Data_(GIS_Friendly_Format),_{year}_release*.csv"
@@ -61,7 +74,7 @@ def resolve_metric(df, aliases, metric_name, year, path):
 def clean_file(path, year):
     raw = read_csv_flexible(path)
 
-    # Start with IDs/demographics that exist
+    # IDs/demographics
     id_cols_present = [c for c in BASE_KEEP if c in raw.columns]
     out = raw[id_cols_present].copy()
     out.rename(columns={k:v for k,v in ID_RENAME.items() if k in out.columns}, inplace=True)
@@ -70,18 +83,31 @@ def clean_file(path, year):
     if "county_fips" in out.columns:
         out["county_fips"] = out["county_fips"].astype(str).str.zfill(5)
 
-    # Numeric demographics
-    for col in ("pop_total", "pop_18plus"):
-        if col in out.columns:
-            out[col] = pd.to_numeric(out[col], errors="coerce")
+    # Population numerics (strip commas/spaces)
+    if "pop_total" in out.columns:
+        out["pop_total"] = clean_numeric_series(out["pop_total"])
+    if "pop_18plus" in out.columns:
+        out["pop_18plus"] = clean_numeric_series(out["pop_18plus"])
 
-    # Resolve each metric via alias list
+    # Resolve each metric
     for clean_name, aliases in MEASURE_ALIASES.items():
         out[clean_name] = resolve_metric(raw, aliases, clean_name, year, path)
 
     out["year"] = year
 
-    # Final column order (only keep columns we actually have)
+    # Drop rows with missing population OR all measures null (kept simple)
+    present_measures = [c for c in MEASURE_COLS if c in out.columns]
+    before = len(out)
+    if "pop_total" in out.columns:
+        mask_bad = out["pop_total"].isna()
+        if present_measures:
+            mask_bad |= out[present_measures].notna().sum(axis=1) == 0
+        out = out.loc[~mask_bad].copy()
+        dropped = before - len(out)
+        if dropped:
+            print(f"[QA][{year}] Dropped {dropped} empty/low-coverage rows")
+
+    # Final column order (only keep what exists)
     ordered = [c for c in OUTPUT_COL_ORDER if c in out.columns]
     return out[ordered]
 
