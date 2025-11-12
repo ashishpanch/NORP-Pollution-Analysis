@@ -13,7 +13,7 @@ import os, re, glob
 import pandas as pd
 from pathlib import Path
 
-OUT_DIR = Path("cleaned")
+OUT_DIR = Path("cleaned_health_resources_data")
 OUT_DIR.mkdir(exist_ok=True)
 
 def read_csv_flexible(path):
@@ -61,11 +61,14 @@ def main():
         df = read_csv_flexible(f)
         df = ensure_fips(df)
         out = df.copy()
-        out_path = OUT_DIR / f"ahrf_{year}_trim.csv"
+        out_path = OUT_DIR / f"ahrf_{year}_cleaned.csv"
         out.to_csv(out_path, index=False)
         summary.append({"file": f, "year": year, "rows": len(out), "out": str(out_path)})
         print(f"[AHRF] Wrote {out_path.name} ({len(out)} rows)")
     pd.DataFrame(summary).to_csv(OUT_DIR / "ahrf_summary.csv", index=False)
+    all_out = pd.concat([pd.read_csv(row["out"], dtype=str, low_memory=False) for row in summary], ignore_index=True)
+    all_out.to_csv(OUT_DIR / "ahrf_all_trim.csv", index=False)
+
     print("[AHRF] Done.")
 
 if __name__ == "__main__":
