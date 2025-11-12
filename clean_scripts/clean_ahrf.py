@@ -1,14 +1,3 @@
-"""
-Clean HRSA AHRF county-level extract (flexible, uses whatever year is encoded in file).
-Expected input filenames (any that exist will be processed):
-  ahrf{YEAR}.csv  (e.g., ahrf2024.csv)
-
-Output:
-  cleaned/ahrf_{YEAR}_trim.csv - trimmed with county_fips + preserves all columns
-Notes:
- - AHRF schema varies. This script keeps all columns but ensures a county_fips column.
- - If both 'FIPS' and 'F00002' exist, prefers the 5-digit code.
-"""
 import os, re, glob
 import pandas as pd
 from pathlib import Path
