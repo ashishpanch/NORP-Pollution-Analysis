@@ -1,28 +1,42 @@
-"""
-Clean CDC 500 Cities city-level (2016-2019) if present.
-Expected input filenames (any that exist will be processed):
-  500_Cities__City-level_Data_(GIS_Friendly_Format),_{YEAR}_release_*.csv
-
-Output:
-  cleaned/500cities_city_{YEAR}.csv - trimmed city-level indicators
-Notes:
- - Keeps essential columns and renames to a consistent schema.
- - Does NOT pivot by measure; leaves long form (one row per place+measure).
-"""
 import glob
 import pandas as pd
 from pathlib import Path
 
 YEARS = [2016, 2017, 2018, 2019]
-OUT_DIR = Path("cleaned")
+OUT_DIR = Path("../cleaned_health_outcomes_data")
 OUT_DIR.mkdir(exist_ok=True)
 
-# Common columns in 500 Cities City-level (GIS-friendly) exports (vary slightly by year)
-CANDIDATES = [
-    "PlaceFIPS", "PlaceName", "StateAbbr", "StateDesc", "CityName",
-    "MeasureId", "Measure", "Category", "Data_Value", "Low_Confidence_Limit",
-    "High_Confidence_Limit", "PopulationCount", "TotalPopulation",
-    "Short_Question_Text", "LocationName", "TractFIPS"
+# Always try to keep these ID/demographic fields (Population2010 is the city pop)
+BASE_KEEP = ["PlaceFIPS", "PlaceName", "StateAbbr", "Population2010"]
+
+ID_RENAME = {
+    "PlaceFIPS": "place_fips",
+    "PlaceName": "place_name",
+    "StateAbbr": "state",
+    "Population2010": "pop_2010",
+}
+
+# Preferred columns (first) with crude fallbacks (later) per metric
+# Keep this aligned with the PLACES cleaner metrics + optional phlth/mhlth
+MEASURE_ALIASES = {
+    "asthma_prev":     ["CASTHMA_AdjPrev", "ASTHMA_AdjPrev", "CASTHMA_CrudePrev", "ASTHMA_CrudePrev"],
+    "copd_prev":       ["COPD_AdjPrev", "COPD_CrudePrev"],
+    "chd_prev":        ["CHD_AdjPrev", "CHD_CrudePrev"],
+    "stroke_prev":     ["STROKE_AdjPrev", "STROKE_CrudePrev"],
+    "smoking_prev":    ["CSMOKING_AdjPrev", "SMOKING_AdjPrev", "CSMOKING_CrudePrev", "SMOKING_CrudePrev"],
+    "diabetes_prev":   ["DIABETES_AdjPrev", "DIABETES_CrudePrev"],
+    "inactivity_prev": ["LPA_AdjPrev", "LPA_CrudePrev"],
+    # Optional general health indicators (kept if present)
+    "phlth_prev":      ["PHLTH_AdjPrev", "PHLTH_CrudePrev"],
+    "mhlth_prev":      ["MHLTH_AdjPrev", "MHLTH_CrudePrev"],
+}
+
+OUTPUT_COL_ORDER = [
+    "place_fips", "place_name", "state", "pop_2010",
+    "asthma_prev", "copd_prev", "chd_prev", "stroke_prev",
+    "smoking_prev", "diabetes_prev", "inactivity_prev",
+    "phlth_prev", "mhlth_prev",
+    "year",
 ]
 
 def read_csv_flexible(path):
@@ -32,35 +46,59 @@ def read_csv_flexible(path):
         return pd.read_csv(path, low_memory=False, encoding="latin-1")
 
 def find_files(year):
-    patt = f"500_Cities__City-level_Data_(GIS_Friendly_Format),_{year}_release*.csv"
-    return glob.glob(patt)
+    pattern = f"../health_outcomes/500_Cities__City-level_Data_(GIS_Friendly_Format),_{year}_release*.csv"
+    return glob.glob(pattern)
+
+def resolve_metric(df, aliases, metric_name, year, path):
+    for col in aliases:
+        if col in df.columns:
+            print(f"[500Cities][{year}] {metric_name} <= {col} ({Path(path).name})")
+            return pd.to_numeric(df[col], errors="coerce")
+    print(f"[500Cities][{year}] WARNING: {metric_name} missing in {Path(path).name} (tried {aliases})")
+    return pd.Series([pd.NA] * len(df), dtype="float")
 
 def clean_file(path, year):
-    df = read_csv_flexible(path)
-    keep = [c for c in CANDIDATES if c in df.columns] or df.columns.tolist()
-    out = df[keep].copy()
+    raw = read_csv_flexible(path)
+
+    # Start with IDs/demographics that exist
+    id_cols_present = [c for c in BASE_KEEP if c in raw.columns]
+    out = raw[id_cols_present].copy()
+    out.rename(columns={k:v for k,v in ID_RENAME.items() if k in out.columns}, inplace=True)
+
+    # Normalize IDs
+    if "place_fips" in out.columns:
+        out["place_fips"] = out["place_fips"].astype(str).str.zfill(7)
+    if "pop_2010" in out.columns:
+        out["pop_2010"] = pd.to_numeric(out["pop_2010"], errors="coerce")
+
+    # Resolve each metric via alias list (wide schema expected for GIS-friendly)
+    for clean_name, aliases in MEASURE_ALIASES.items():
+        out[clean_name] = resolve_metric(raw, aliases, clean_name, year, path)
+
     out["year"] = year
-    if "PlaceFIPS" in out.columns:
-        out.rename(columns={"PlaceFIPS":"place_fips"}, inplace=True)
-    if "Data_Value" in out.columns:
-        out.rename(columns={"Data_Value":"value"}, inplace=True)
-    return out
+
+    # Final column order (only keep columns we actually have)
+    ordered = [c for c in OUTPUT_COL_ORDER if c in out.columns]
+    return out[ordered]
 
 def main():
     summaries = []
-    for y in YEARS:
-        files = find_files(y)
+    for year in YEARS:
+        files = find_files(year)
         if not files:
-            print(f"[500 Cities] No files for {y}. Skipping.")
+            print(f"[500Cities] No files for {year}. Skipping.")
             continue
-        frames = [clean_file(f, y) for f in files]
-        out = pd.concat(frames, ignore_index=True)
-        out_path = OUT_DIR / f"500cities_city_{y}.csv"
-        out.to_csv(out_path, index=False)
-        summaries.append({"year": y, "rows": len(out), "file": str(out_path)})
-        print(f"[500 Cities] Wrote {out_path.name} ({len(out)} rows)")
+
+        frames = [clean_file(f, year) for f in files]
+        combined = pd.concat(frames, ignore_index=True)
+
+        out_path = OUT_DIR / f"500cities_city_{year}.csv"
+        combined.to_csv(out_path, index=False)
+        print(f"[500Cities] Wrote {out_path.name} ({len(combined)} rows)")
+        summaries.append({"year": year, "rows": len(combined), "file": str(out_path)})
+
     pd.DataFrame(summaries).to_csv(OUT_DIR / "500cities_city_summary.csv", index=False)
-    print("[500 Cities] Done.")
+    print("[500Cities] Done.")
 
 if __name__ == "__main__":
     main()

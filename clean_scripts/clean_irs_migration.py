@@ -1,30 +1,4 @@
 #!/usr/bin/env python3
-"""
-Clean IRS county migration (inflow/outflow) CSVs.
-
-Folder layout this script expects (relative to repo root):
-  NORP/
-    clean_scripts/
-      clean_irs_migration.py  <-- this file
-    migration/
-      inflow/
-        countyinflow1516.csv
-        countyinflow1617.csv
-        countyinflow1718.csv
-        countyinflow1819.csv
-        countyinflow1920.csv
-        countyinflow2020_2021.csv
-        countyinflow2122.csv
-      outflow/
-        countyoutflow1516.csv
-        countyoutflow1617.csv
-        countyoutflow1718.csv
-        countyoutflow1819.csv
-        countyoutflow1920.csv
-        countyoutflow2021.csv
-        countyoutflow2122.csv
-    cleaned_migration_data/   <-- outputs (created if missing)
-"""
 
 from __future__ import annotations
 import re
