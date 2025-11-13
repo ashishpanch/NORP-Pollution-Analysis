@@ -1,3 +1,3 @@
-file,year,rows,out
-health_resources/ahrf2023.csv,2023,3231,cleaned_health_resources_data/ahrf_2023_cleaned.csv
-health_resources/ahrf2024.csv,2024,3240,cleaned_health_resources_data/ahrf_2024_cleaned.csv
+year,rows
+2023,3231
+2024,3240
