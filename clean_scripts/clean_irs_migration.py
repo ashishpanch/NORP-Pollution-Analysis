@@ -1,13 +1,4 @@
-<<<<<<< HEAD
 import pandas as pd
-=======
-#!/usr/bin/env python3
-
-from __future__ import annotations
-import re
-from pathlib import Path
-from typing import Optional, Tuple, List
->>>>>>> e96865552fa795dc33a3bc5ee580d02ea4cc6f77
 import sys
 import os
 import glob
@@ -22,11 +13,11 @@ def clean_and_merge_migration_data(year_suffix):
     outflow_file = os.path.join("migration", "outflow", f"countyoutflow{year_suffix}.csv")
 
     if not os.path.exists(inflow_file) or not os.path.exists(outflow_file):
-        print(f"⚠️ Missing file(s) for {year_suffix}, skipping.")
+        print(f" Missing file(s) for {year_suffix}, skipping.")
         return None
 
-    print(f"\n📥 Loading inflow data: {inflow_file}")
-    print(f"📤 Loading outflow data: {outflow_file}")
+    print(f"\n Loading inflow data: {inflow_file}")
+    print(f" Loading outflow data: {outflow_file}")
 
     inflow = pd.read_csv(inflow_file, encoding="latin1")
     outflow = pd.read_csv(outflow_file, encoding="latin1")
@@ -98,8 +89,8 @@ def clean_and_merge_migration_data(year_suffix):
     output_file = os.path.join("cleaned_migration_data", f"cleaned_migration_{year_suffix}.csv")
     cleaned.to_csv(output_file, index=False)
 
-    print(f"✅ Cleaned and merged file saved to: {output_file}")
-    print(f"📊 Total counties processed: {len(cleaned)}")
+    print(f" Cleaned and merged file saved to: {output_file}")
+    print(f" Total counties processed: {len(cleaned)}")
 
     return cleaned
 
@@ -114,10 +105,10 @@ def clean_all_years():
 
     valid_years = sorted(inflow_years.intersection(outflow_years))
     if not valid_years:
-        print("⚠️ No matching inflow/outflow file pairs found.")
+        print(" No matching inflow/outflow file pairs found.")
         return
 
-    print(f"\n📆 Found {len(valid_years)} matching year pairs: {', '.join(valid_years)}")
+    print(f"\n Found {len(valid_years)} matching year pairs: {', '.join(valid_years)}")
     for year_suffix in valid_years:
         clean_and_merge_migration_data(year_suffix)
 
