@@ -6,7 +6,6 @@ YEARS = [2016, 2017, 2018, 2019]
 OUT_DIR = Path("../cleaned_health_outcomes_data")
 OUT_DIR.mkdir(exist_ok=True)
 
-# Accept a few possible population columns; map all to pop_2010
 BASE_KEEP = ["PlaceFIPS", "PlaceName", "StateAbbr", "Population2010", "PopulationCount", "TotalPopulation"]
 
 ID_RENAME = {
@@ -46,7 +45,6 @@ def read_csv_flexible(path):
         return pd.read_csv(path, low_memory=False, encoding="latin-1")
 
 def clean_numeric_series(s):
-    # Handles "123,456" and whitespace before conversion
     return pd.to_numeric(
         s.astype(str).str.replace(r"[,\s]", "", regex=True).replace({"": None}),
         errors="coerce"
@@ -84,7 +82,6 @@ def clean_file(path, year):
 
     out["year"] = year
 
-    # Final column order (only keep columns we actually have)
     ordered = [c for c in OUTPUT_COL_ORDER if c in out.columns]
     return out[ordered]
 

@@ -4,17 +4,16 @@ import pandas as pd
 INPUT_DIR = "concentration_counties"
 OUTPUT_DIR = "cleaned_concentrations_by_monitor"
 
-# Pollutants we want to keep
+#Pollutants we want to keep
 PM25_KEYWORDS = ["PM2.5 - Local Conditions"]
 OZONE_KEYWORDS = ["Ozone"]
 
-# Valid sample durations per pollutant
 VALID_DURATIONS = {
     "PM2.5": ["24 HOUR"],
     "Ozone": ["8-HR RUN AVG BEGIN HOUR"]
 }
 
-# Columns to keep
+#Columns to keep
 KEEP_COLS = [
     "State Code", "County Code",
     "State Name", "County Name", "City Name",
@@ -35,17 +34,15 @@ def clean_single_file(filepath):
 
     df = pd.read_csv(filepath, encoding="latin1")
 
-    # Keep only relevant columns
     cols_to_use = [c for c in KEEP_COLS if c in df.columns]
     df = df[cols_to_use].copy()
 
-    # ---- Create combined FIPS column ----
+    # Create combined County FIPS codes
     df["county_fips"] = (
         df["State Code"].astype(str).str.zfill(2) +
         df["County Code"].astype(str).str.zfill(3)
     )
 
-    # ---- Remove State/County Code ----
     df = df.drop(columns=["State Code", "County Code"])
 
     # Filter pollutants
@@ -56,7 +53,6 @@ def clean_single_file(filepath):
     cols_to_use.insert(0, cols_to_use.pop(cols_to_use.index("county_fips")))
     df = df[cols_to_use]
 
-    # Apply valid sample durations
     def valid_duration(row):
         pname = row["Parameter Name"]
         pdur = row["Sample Duration"]

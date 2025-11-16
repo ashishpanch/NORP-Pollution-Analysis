@@ -6,7 +6,6 @@ YEARS = [2020, 2021, 2022, 2023, 2024]
 OUT_DIR = Path("../cleaned_health_outcomes_data")
 OUT_DIR.mkdir(exist_ok=True)
 
-# Always try to keep these ID/demographic fields (18+ may be absent)
 BASE_KEEP = ["CountyFIPS", "CountyName", "StateAbbr", "TotalPopulation", "TotalPop18plus"]
 
 ID_RENAME = {
@@ -17,7 +16,6 @@ ID_RENAME = {
     "TotalPop18plus": "pop_18plus",
 }
 
-# Preferred columns (first) with crude fallbacks (later) per metric
 MEASURE_ALIASES = {
     "asthma_prev":     ["CASTHMA_AdjPrev", "ASTHMA_AdjPrev", "CASTHMA_CrudePrev", "ASTHMA_CrudePrev"],
     "copd_prev":       ["COPD_AdjPrev", "COPD_CrudePrev"],
@@ -26,7 +24,6 @@ MEASURE_ALIASES = {
     "smoking_prev":    ["CSMOKING_AdjPrev", "SMOKING_AdjPrev", "CSMOKING_CrudePrev", "SMOKING_CrudePrev"],
     "diabetes_prev":   ["DIABETES_AdjPrev", "DIABETES_CrudePrev"],
     "inactivity_prev": ["LPA_AdjPrev", "LPA_CrudePrev"],
-    # Optional general health indicators (kept if present)
     "phlth_prev":      ["PHLTH_AdjPrev", "PHLTH_CrudePrev"],
     "mhlth_prev":      ["MHLTH_AdjPrev", "MHLTH_CrudePrev"],
 }
@@ -40,7 +37,6 @@ OUTPUT_COL_ORDER = [
     "year",
 ]
 
-# Health measures for simple completeness check
 MEASURE_COLS = [
     "asthma_prev","copd_prev","chd_prev","stroke_prev",
     "smoking_prev","diabetes_prev","inactivity_prev","phlth_prev","mhlth_prev"
@@ -53,7 +49,6 @@ def read_csv_flexible(path):
         return pd.read_csv(path, low_memory=False, encoding="latin-1")
 
 def clean_numeric_series(s):
-    # handle "123,456" and spaces before converting to number
     return pd.to_numeric(
         s.astype(str).str.replace(r"[,\s]", "", regex=True).replace({"": None}),
         errors="coerce"
@@ -83,7 +78,6 @@ def clean_file(path, year):
     if "county_fips" in out.columns:
         out["county_fips"] = out["county_fips"].astype(str).str.zfill(5)
 
-    # Population numerics (strip commas/spaces)
     if "pop_total" in out.columns:
         out["pop_total"] = clean_numeric_series(out["pop_total"])
     if "pop_18plus" in out.columns:
@@ -95,7 +89,6 @@ def clean_file(path, year):
 
     out["year"] = year
 
-    # Drop rows with missing population OR all measures null (kept simple)
     present_measures = [c for c in MEASURE_COLS if c in out.columns]
     before = len(out)
     if "pop_total" in out.columns:
@@ -107,7 +100,6 @@ def clean_file(path, year):
         if dropped:
             print(f"[QA][{year}] Dropped {dropped} empty/low-coverage rows")
 
-    # Final column order (only keep what exists)
     ordered = [c for c in OUTPUT_COL_ORDER if c in out.columns]
     return out[ordered]
 

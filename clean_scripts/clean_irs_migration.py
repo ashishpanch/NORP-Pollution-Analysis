@@ -4,10 +4,6 @@ import os
 import glob
 
 def clean_and_merge_migration_data(year_suffix):
-    """
-    Cleans and merges county inflow and outflow data for a given year range.
-    Keeps only rows with 'Total Migration-US and Foreign' in the county name.
-    """
 
     inflow_file = os.path.join("migration", "inflow", f"countyinflow{year_suffix}.csv")
     outflow_file = os.path.join("migration", "outflow", f"countyoutflow{year_suffix}.csv")
@@ -22,13 +18,9 @@ def clean_and_merge_migration_data(year_suffix):
     inflow = pd.read_csv(inflow_file, encoding="latin1")
     outflow = pd.read_csv(outflow_file, encoding="latin1")
 
-    # ---- Validate columns ----
     print(f"Inflow columns: {list(inflow.columns)}")
     print(f"Outflow columns: {list(outflow.columns)}")
 
-    # -----------------------------
-    # Select and rename inflow columns
-    # -----------------------------
     inflow = inflow.rename(columns={
         "y2_statefips": "statefips",
         "y2_countyfips": "countyfips",
@@ -49,15 +41,10 @@ def clean_and_merge_migration_data(year_suffix):
         "agi": "agi_outflow"
     })
 
-    # -----------------------------
-    # Keep only rows with "Total Migration-US and Foreign"
-    # -----------------------------
+    #Total Migration only for better comparability
     inflow = inflow[inflow["countyname"].str.contains("Total Migration-US and Foreign", case=False, na=False)]
     outflow = outflow[outflow["countyname"].str.contains("Total Migration-US and Foreign", case=False, na=False)]
 
-    # -----------------------------
-    # Merge inflow and outflow data
-    # -----------------------------
     merged = pd.merge(
         inflow,
         outflow,
@@ -65,10 +52,10 @@ def clean_and_merge_migration_data(year_suffix):
         how="inner"
     )
 
-    # Compute net migration (inflow - outflow)
+    #Calculating net migration (inflow - outflow)
     merged["net_migration"] = merged["n1_inflow"] - merged["n1_outflow"]
 
-    # Add FIPS (state + county)
+    # Add Combined FIPS code (state + county)
     merged["county_fips"] = (
         merged["statefips"].astype(str).str.zfill(2)
         + merged["countyfips"].astype(str).str.zfill(3)
@@ -96,7 +83,7 @@ def clean_and_merge_migration_data(year_suffix):
 
 
 def clean_all_years():
-    """Automatically finds and processes all inflow/outflow file pairs."""
+    """Automatically finds and processes all inflow/outflow file pairs"""
     inflow_files = glob.glob(os.path.join("migration", "inflow", "countyinflow*.csv"))
     outflow_files = glob.glob(os.path.join("migration", "outflow", "countyoutflow*.csv"))
 
@@ -112,10 +99,6 @@ def clean_all_years():
     for year_suffix in valid_years:
         clean_and_merge_migration_data(year_suffix)
 
-
-# -----------------------------
-# Script entry point
-# -----------------------------
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         arg = sys.argv[1]
