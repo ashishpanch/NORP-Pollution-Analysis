@@ -69,13 +69,13 @@ def clean_and_merge_migration_data(year_suffix):
     merged["net_migration"] = merged["n1_inflow"] - merged["n1_outflow"]
 
     # Add FIPS (state + county)
-    merged["fips"] = (
+    merged["county_fips"] = (
         merged["statefips"].astype(str).str.zfill(2)
         + merged["countyfips"].astype(str).str.zfill(3)
     )
 
     cleaned = merged[[
-        "fips",
+        "county_fips",
         "state",
         "countyname",
         "n1_inflow",

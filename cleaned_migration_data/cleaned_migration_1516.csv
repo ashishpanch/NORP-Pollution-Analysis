@@ -1,4 +1,4 @@
-fips,state,countyname,n1_inflow,n1_outflow,net_migration,agi_inflow,agi_outflow
+county_fips,state,countyname,n1_inflow,n1_outflow,net_migration,agi_inflow,agi_outflow
 01000,AL,Total Migration-US and Foreign,100390,100784,-394,4835874,4994641
 01001,AL,Autauga County Total Migration-US and Foreign,1870,1677,193,94250,88748
 01003,AL,Baldwin County Total Migration-US and Foreign,6069,4186,1883,392252,220426

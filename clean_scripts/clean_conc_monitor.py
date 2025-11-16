@@ -16,7 +16,7 @@ VALID_DURATIONS = {
 
 # Columns to keep
 KEEP_COLS = [
-    "County Code",
+    "State Code", "County Code",
     "State Name", "County Name", "City Name",
     "Parameter Name", "Sample Duration", "Units of Measure",
     "Arithmetic Mean", "Arithmetic Standard Dev", "1st Max Value",
@@ -39,10 +39,22 @@ def clean_single_file(filepath):
     cols_to_use = [c for c in KEEP_COLS if c in df.columns]
     df = df[cols_to_use].copy()
 
+    # ---- Create combined FIPS column ----
+    df["county_fips"] = (
+        df["State Code"].astype(str).str.zfill(2) +
+        df["County Code"].astype(str).str.zfill(3)
+    )
+
+    # ---- Remove State/County Code ----
+    df = df.drop(columns=["State Code", "County Code"])
+
     # Filter pollutants
     df = df[
         df["Parameter Name"].apply(lambda x: is_pm25(x) or is_ozone(x))
     ]
+    cols_to_use = df.columns.tolist()
+    cols_to_use.insert(0, cols_to_use.pop(cols_to_use.index("county_fips")))
+    df = df[cols_to_use]
 
     # Apply valid sample durations
     def valid_duration(row):
