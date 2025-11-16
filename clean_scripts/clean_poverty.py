@@ -10,7 +10,7 @@ def clean_poverty(input_csv: str, output_csv: str):
     is_county = df["Area_Name"].str.contains("county", case=False, na=False)
 
     # Keep only rows with attribute PCTPOVALL_2023 (case-insensitive)
-    is_poverty = df["attribute"].str.upper().eq("PCTPOVALL_2023")
+    is_poverty = df["Attribute"].str.upper().eq("PCTPOVALL_2023")
 
     out = df[is_county & is_poverty].copy()
 
@@ -18,8 +18,8 @@ def clean_poverty(input_csv: str, output_csv: str):
     out["FIPS_Code"] = out["FIPS_Code"].astype("int64").astype(str).str.zfill(5)
 
     # Select and rename columns
-    out = out[["FIPS_Code", "Area_Name", "value"]]
-    out = out.rename(columns={"value": "Poverty Percentage"})
+    out = out[["FIPS_Code", "Area_Name", "Value"]]
+    out = out.rename(columns={"Value": "Poverty Percentage"})
 
     # Save output
     Path(output_csv).parent.mkdir(parents=True, exist_ok=True)
