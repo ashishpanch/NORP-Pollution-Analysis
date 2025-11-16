@@ -5,18 +5,16 @@ from pathlib import Path
 def clean_median_income(input_csv: str, output_csv: str):
     df = pd.read_csv(input_csv)
 
-    # keep only county rows
+    # Only County Rows
     is_county = df["Area_Name"].str.contains("county", case=False, na=False)
 
-    # keep only median household income 2022 rows (case-insensitive match)
+    # Only Median Household Income Rows
     is_mhi_2022 = df["Attribute"].str.lower().eq("median_household_income_2022")
 
     out = df[is_county & is_mhi_2022].copy()
 
-    # normalize FIPS to 5-digit string
     out["FIPS_Code"] = out["FIPS_Code"].astype("int64").astype(str).str.zfill(5)
 
-    # keep / rename columns
     out = out[["FIPS_Code", "Area_Name", "Value"]]
     out = out.rename(columns={"Value": "Median Income"})
 
