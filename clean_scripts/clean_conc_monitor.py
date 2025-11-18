@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 
-INPUT_DIR = "concentration_counties"
+INPUT_DIR = "raw_data/concentration_counties"
 OUTPUT_DIR = "cleaned_concentrations_by_monitor"
 
 #Pollutants we want to keep
@@ -16,7 +16,7 @@ VALID_DURATIONS = {
 #Columns to keep
 KEEP_COLS = [
     "State Code", "County Code",
-    "State Name", "County Name", "City Name",
+    "State Name", "County Name",
     "Parameter Name", "Sample Duration", "Units of Measure",
     "Arithmetic Mean", "Arithmetic Standard Dev", "1st Max Value",
     "2nd Max Value","3rd Max Value", "4th Max Value",
