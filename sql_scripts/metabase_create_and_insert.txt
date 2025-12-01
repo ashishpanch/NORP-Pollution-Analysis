@@ -1,0 +1,83 @@
+create_tables.py addition:
+
+    elif tablename == 'irs_migration_data':
+        create_table(f"{base_path}nccs/sql_scripts/create_tables/create_irs_migration.sql", mydb)
+    elif tablename == 'median_income_2022':
+        create_table(f"{base_path}nccs/sql_scripts/create_tables/create_median_income_2022.sql", mydb)
+    elif tablename == 'poverty_rates_2023':
+        create_table(f"{base_path}nccs/sql_scripts/create_tables/create_poverty_rates_2023.sql", mydb)
+    elif tablename == 'AQI_County_Data':
+        create_table(f"{base_path}nccs/sql_scripts/create_tables/create_aqi_county_data.sql", mydb)
+    elif tablename == 'places_county_health':
+        create_table(f"{base_path}nccs/sql_scripts/create_tables/create_places_county_health.sql", mydb)
+    elif tablename == 'air_quality_concentration':
+        create_table(f"{base_path}nccs/sql_scripts/create_tables/create_air_quality_concentration.sql", mydb)
+
+
+insert_into_tables.py addition:
+
+(Schema Creation):
+
+irs_migration_schema = ['county_fips','state','countyname','n1_inflow','n1_outflow','net_migration','agi_inflow','agi_outflow']
+median_income_2022_schema = ['FIPS_Code','Area_Name','Median_Income']
+poverty_rates_2023_schema = ['FIPS_Code','Area_Name','Poverty_Percentage']
+aqi_county_schema = ['State','County','Year','Days_with_AQI','Good_Days','Moderate_Days','Unhealthy_Sensitive_Days','Unhealthy_Days','Max_AQI','Median_AQI','Pct_Good','Pct_Unhealthy']
+air_quality_concentration_schema = ['county_fips','State Name','County Name','City Name','Parameter Name','Sample Duration','Units of Measure','Arithmetic Mean','Arithmetic Standard Dev','1st Max Value','2nd Max Value','3rd Max Value','4th Max Value','Observation Count','Observation Percent','Completeness Indicator']
+places_county_health_schema = ['county_fips','county_name','state','pop_total','asthma_prev','copd_prev','chd_prev','stroke_prev','smoking_prev','diabetes_prev','inactivity_prev','phlth_prev','mhlth_prev','year']
+
+
+
+(Insert Tables):
+
+ elif tablename == "irs_migration_data":
+        insert_into_table(f"{base_path}nccs/data/cleaned_migration_1516.csv", "irs_migration_2015_2016", irs_migration_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/cleaned_migration_1617.csv", "irs_migration_2016_2017", irs_migration_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/cleaned_migration_1718.csv", "irs_migration_2017_2018", irs_migration_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/cleaned_migration_1819.csv", "irs_migration_2018_2019", irs_migration_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/cleaned_migration_1920.csv", "irs_migration_2019_2020", irs_migration_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/cleaned_migration_2021.csv", "irs_migration_2020_2021", irs_migration_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/cleaned_migration_2122.csv", "irs_migration_2021_2022", irs_migration_schema, mydb)
+
+
+    elif tablename == "median_income_2022":
+        insert_into_table(f"{base_path}nccs/data/cleaned_median_income_2022_county.csv", "Median_Income_2022", median_income_2022_schema, mydb)
+
+
+    elif tablename == "poverty_rates_2023":
+        insert_into_table(f"{base_path}nccs/data/cleaned_poverty_percentage_2023.csv", "Poverty_Rates_2023", poverty_rates_2023_schema, mydb)
+
+
+    elif tablename == "AQI_County_Data":
+        insert_into_table(f"{base_path}nccs/data/cleaned_aqi_2015.csv", "AQI_Data_2015", aqi_county_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/cleaned_aqi_2016.csv", "AQI_Data_2016", aqi_county_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/cleaned_aqi_2017.csv", "AQI_Data_2017", aqi_county_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/cleaned_aqi_2018.csv", "AQI_Data_2018", aqi_county_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/cleaned_aqi_2019.csv", "AQI_Data_2019", aqi_county_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/cleaned_aqi_2020.csv", "AQI_Data_2020", aqi_county_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/cleaned_aqi_2021.csv", "AQI_Data_2021", aqi_county_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/cleaned_aqi_2022.csv", "AQI_Data_2022", aqi_county_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/cleaned_aqi_2023.csv", "AQI_Data_2023", aqi_county_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/cleaned_aqi_2024.csv", "AQI_Data_2024", aqi_county_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/cleaned_aqi_2025.csv", "AQI_Data_2025", aqi_county_schema, mydb)
+
+
+    elif tablename == "air_quality_concentration":
+        insert_into_table(f"{base_path}nccs/data/air_cleaned_2015.csv", "Air_Quality_Concentration_2015", air_quality_concentration_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/air_cleaned_2016.csv", "Air_Quality_Concentration_2016", air_quality_concentration_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/air_cleaned_2017.csv", "Air_Quality_Concentration_2017", air_quality_concentration_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/air_cleaned_2018.csv", "Air_Quality_Concentration_2018", air_quality_concentration_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/air_cleaned_2019.csv", "Air_Quality_Concentration_2019", air_quality_concentration_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/air_cleaned_2020.csv", "Air_Quality_Concentration_2020", air_quality_concentration_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/air_cleaned_2021.csv", "Air_Quality_Concentration_2021", air_quality_concentration_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/air_cleaned_2022.csv", "Air_Quality_Concentration_2022", air_quality_concentration_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/air_cleaned_2023.csv", "Air_Quality_Concentration_2023", air_quality_concentration_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/air_cleaned_2024.csv", "Air_Quality_Concentration_2024", air_quality_concentration_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/air_cleaned_2025.csv", "Air_Quality_Concentration_2025", air_quality_concentration_schema, mydb)
+
+
+    elif tablename == "places_county_health":
+        insert_into_table(f"{base_path}nccs/data/places_county_2020.csv", "Places_County_Health_2020", places_county_health_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/places_county_2021.csv", "Places_County_Health_2021", places_county_health_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/places_county_2022.csv", "Places_County_Health_2022", places_county_health_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/places_county_2023.csv", "Places_County_Health_2023", places_county_health_schema, mydb)
+        insert_into_table(f"{base_path}nccs/data/places_county_2024.csv", "Places_County_Health_2024", places_county_health_schema, mydb)       
